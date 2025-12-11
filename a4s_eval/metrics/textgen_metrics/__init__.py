@@ -1,0 +1,1 @@
+import a4s_eval.metrics.textgen_metrics # This import triggers the decorators

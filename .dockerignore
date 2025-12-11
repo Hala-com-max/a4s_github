@@ -1,0 +1,11 @@
+# Top-level test folder
+/tests
+
+# Type checking, linting, and testing tools
+/.mypy_cache
+/.pytest_cache
+/.ruff_cache
+
+# Environment file
+/.env
+

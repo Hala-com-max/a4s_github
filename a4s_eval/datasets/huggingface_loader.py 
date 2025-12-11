@@ -1,0 +1,23 @@
+from datasets import load_dataset
+import pandas as pd
+from a4s_eval.data_model.evaluation import Dataset
+
+def load_hf_dataset(
+    name: str = "ag_news",
+    split: str = "test",
+    text_column: str = "text",
+    label_column: str = "label"
+) -> Dataset:
+    """
+    Load a Hugging Face dataset and convert it to an A4S Dataset.
+    """
+    hf_data = load_dataset(name, split=split)
+    df = pd.DataFrame({
+        "question": hf_data[text_column],
+        "label": hf_data[label_column]
+    })
+
+    return Dataset(
+        name=f"{name}_{split}",
+        data=df
+    )

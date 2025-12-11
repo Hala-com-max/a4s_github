@@ -1,0 +1,29 @@
+# Development Dockerfile for A4S Evaluation Service
+# This Dockerfile sets up a development environment with hot-reloading capabilities
+
+# Use Python slim image as base
+FROM python:3.12-slim-bookworm
+
+# Install system dependencies required for development
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy UV package manager from its official image
+COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY uv.lock pyproject.toml /app/
+
+# Install dependencies using UV with caching
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-install-project
+
+# Start development server using the start_dev script
+CMD ["tasks/start_dev.sh"]

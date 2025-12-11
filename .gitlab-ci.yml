@@ -1,0 +1,63 @@
+default:
+  tags:
+    - a4s-runner
+
+variables:
+  UV_VERSION: "0.5"
+  PYTHON_VERSION: "3.12"
+  BASE_LAYER: bookworm-slim
+  # GitLab CI creates a separate mountpoint for the build directory,
+  # so we need to copy instead of using hard links.
+  UV_LINK_MODE: copy
+  UV_CACHE_DIR: .uv-cache
+
+stages:
+  - checks
+  - test
+  - build
+
+checks:
+  stage: checks
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
+  cache:
+    - key:
+        files:
+          - uv.lock
+      paths:
+        - $UV_CACHE_DIR
+  script:
+    - uv sync
+    - uv run ruff check .
+    - uv run ruff format --check .
+    - uv cache prune --ci
+
+pytest:
+  stage: test
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
+  cache:
+    - key:
+        files:
+          - uv.lock
+      paths:
+        - $UV_CACHE_DIR
+  script:
+    - uv sync --frozen --no-dev --group test
+    - uv run pytest
+    - uv cache prune --ci
+
+docker-build:
+  stage: build
+  image: docker:cli
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  # Default branch is also tagged with `latest`
+  script:
+    - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
+    - DOCKER_IMAGE_NAME="$CI_REGISTRY_IMAGE:$TAG"
+    - docker build --pull -t "$DOCKER_IMAGE_NAME" .
+    - docker push "$DOCKER_IMAGE_NAME"
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+        docker tag "$DOCKER_IMAGE_NAME" "$CI_REGISTRY_IMAGE:latest"
+        docker push "$CI_REGISTRY_IMAGE:latest"
+      fi
